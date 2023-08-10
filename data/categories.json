@@ -1,0 +1,20 @@
+[
+    {
+        "_id": "64c7ec0f20bcb1bba6ea9574",
+        "name": "Боловсрол",
+        "description": "Enjoy shitty things",
+        "photo": "education.jpg"
+    },
+    {
+        "_id": "64c7ec0f20bcb1bba6ea9575",
+        "name": "Уран зохиол",
+        "description": "Enjoy dramatic things",
+        "photo": "drama.jpg"
+    },
+    {
+        "_id": "64c7ec0f20bcb1bba6ea9576",
+        "name": "Шинжлэх ухаан",
+        "description": "Enjoy scientific things",
+        "photo": "science.jpg"
+    }
+]
