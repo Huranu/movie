@@ -1,5 +1,5 @@
 const errorHandler = (err, req, res, next) => {
-  console.log(err.stack.red);
+  console.log(err.stack);
 
   const error = { ...err };
 
@@ -12,6 +12,10 @@ const errorHandler = (err, req, res, next) => {
   if (error.code === 11000) {
     error.message = "Talbariin utga davhardsan baina";
     error.statusCode = 400;
+  }
+  if (error.message === "email must be unique") {
+    error.message = "Ene email-eer burtgeltei uur hereglegch baina!";
+    error.status.code = 400;
   }
 
   res.status(err.statusCode || 500).json({

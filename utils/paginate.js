@@ -1,5 +1,5 @@
 module.exports = async function (page, limit, model) {
-  const total = await model.countDocuments();
+  const total = await model.count();
   const pageCount = Math.ceil(total / limit);
   const start = (page - 1) * limit + 1;
   let end = start + limit - 1;

@@ -1,51 +1,8 @@
-const User = require("../models/User");
 const MyError = require("../utils/myError");
 const paginate = require("../utils/paginate");
 const asyncHandler = require("express-async-handler");
 const sendEmail = require("../utils/email");
 const crypto = require("crypto");
-
-exports.register = asyncHandler(async (req, res, next) => {
-  const user = await User.create(req.body);
-
-  const token = user.getJsonWebToken();
-
-  res.status(200).json({
-    success: true,
-    token,
-    user,
-  });
-});
-
-exports.login = asyncHandler(async (req, res, next) => {
-  const { email, password } = req.body;
-
-  if (!email || !password) {
-    throw new MyError("Ugugdul dutuu baina..", 400);
-  }
-  const user = await User.findOne({ email }).select("+password");
-
-  if (!user) {
-    throw new MyError("Email bolon passwordoo shalgana uu..", 401);
-  }
-
-  const ok = await user.checkPassword(password);
-
-  if (!ok) {
-    throw new MyError("Email bolon passwordoo shalgana uu..", 401);
-  }
-
-  const token = user.getJsonWebToken();
-  const cookieOption = {
-    expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-  };
-
-  res.status(200).cookie("amazon-token", token, cookieOption).json({
-    success: true,
-    token,
-    user,
-  });
-});
 
 exports.getUsers = asyncHandler(async (req, res, next) => {
   const page = parseInt(req.query.page) || 1;
@@ -56,12 +13,26 @@ exports.getUsers = asyncHandler(async (req, res, next) => {
   ["select", "sort", "page", "limit"].forEach((el) => delete req.query[el]);
 
   // Pagination
-  const pagination = await paginate(page, limit, User);
+  const pagination = await paginate(page, limit, req.db.customer);
 
-  const users = await User.find(req.query, select)
-    .sort(sort)
-    .skip(pagination.start - 1)
-    .limit(limit);
+  let Query = { offset: pagination.start - 1, limit };
+
+  if (req.query) {
+    Query.where = req.query;
+  }
+  if (select) {
+    Query.attributes = select;
+  }
+  if (sort) {
+    Query.order = sort
+      .split(" ")
+      .map((el) => [
+        el.charAt(0) === "-" ? el.substring(1) : el,
+        el.charAt(0) === "-" ? "DESC" : "ASC",
+      ]);
+  }
+
+  const users = await req.db.customer.findAll(Query);
 
   res.status(200).json({
     success: true,
@@ -71,7 +42,8 @@ exports.getUsers = asyncHandler(async (req, res, next) => {
 });
 
 exports.getUser = asyncHandler(async (req, res, next) => {
-  const user = await User.findById(req.params.id);
+  const user = await req.db.customer.findByPk(req.params.id);
+
   if (!user) {
     throw new MyError("Iim id-tai hereglegch baihgui", 400);
   }
@@ -83,13 +55,11 @@ exports.getUser = asyncHandler(async (req, res, next) => {
 });
 
 exports.updateUser = asyncHandler(async (req, res, next) => {
-  const user = await User.findByIdAndUpdate(req.params.id, req.body, {
-    new: true,
-    runValidators: true,
-  });
+  let user = await req.db.customer.findByPk(req.params.id);
   if (!user) {
     throw new MyError("Iim id-tai hereglegch baihgui", 400);
   }
+  user = user.update(req.body);
   res.status(200).json({
     success: true,
     data: user,
@@ -97,20 +67,11 @@ exports.updateUser = asyncHandler(async (req, res, next) => {
 });
 
 exports.deleteUser = asyncHandler(async (req, res, next) => {
-  const user = await User.findById(req.params.id);
+  const user = await req.db.customer.findByPk(req.params.id);
   if (!user) {
     throw new MyError("Iim id-tai hereglegch baihgui", 400);
   }
-  user.remove();
-
-  res.status(200).json({
-    success: true,
-    data: user,
-  });
-});
-
-exports.createUser = asyncHandler(async (req, res, next) => {
-  const user = await User.create(req.body);
+  user.destroy();
 
   res.status(200).json({
     success: true,

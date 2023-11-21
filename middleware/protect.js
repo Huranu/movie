@@ -1,7 +1,6 @@
 const jwt = require("jsonwebtoken");
 const asyncHandler = require("./asyncHandler");
 const MyError = require("../utils/myError");
-const User = require("../models/User");
 
 exports.protect = asyncHandler(async (req, res, next) => {
   let token = null;
@@ -10,7 +9,7 @@ exports.protect = asyncHandler(async (req, res, next) => {
     token = req.headers.authorization.split(" ")[1];
   } else if (req.cookies) {
     console.log(req.cookies);
-    token = req.cookies["amazon-token"];
+    token = req.cookies["token"];
   }
 
   if (!token) {

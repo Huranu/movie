@@ -1,98 +1,94 @@
+const path = require("path");
+
 const express = require("express");
 const dotenv = require("dotenv");
-const logger = require("./middleware/logger");
-var morgan = require("morgan");
-var path = require("path");
-var rfs = require("rotating-file-stream");
-const connectDB = require("./config/db");
-const colors = require("colors");
-const errorHandler = require("./middleware/error");
+const morgan = require("morgan");
+const rfs = require("rotating-file-stream");
 const fileUpload = require("express-fileupload");
-const cors = require("cors");
-var cookieParser = require("cookie-parser");
-const helmet = require("helmet");
-var xss = require("xss-clean");
-const rateLimit = require("express-rate-limit");
-const hpp = require("hpp");
+const cookieParser = require("cookie-parser");
+const { DataTypes } = require("sequelize");
+
+const logger = require("./middleware/logger");
+const errorHandler = require("./middleware/error");
+const injectDb = require("./middleware/injectDB");
 
 const app = express();
 
 dotenv.config({ path: "./config/config.env" });
 
-const db = require("./config/db-mysql");
+const db = require("./config/databasepg");
 
-connectDB();
-
-const categoriesRoutes = require("./routes/categories");
-const booksRoutes = require("./routes/books");
-const usersRoutes = require("./routes/users");
-const commentsRoutes = require("./routes/comments");
-const injectDb = require("./middleware/injectDb");
-
-var whitelist = ["http://localhost:3000"];
-
-var corsOptions = {
-  origin: function (origin, callback) {
-    if (origin === undefined || whitelist.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error("horigloj baina..."));
-    }
-  },
-  allowedHeaders: "Authorization,Set-Cookie,Content-Type",
-  methods: "GET,POST,PUT,DELETE",
-  credentials: true,
-};
-
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 3,
-  message: "15 minutand heterhii olon oroldlogo hiisen baina..",
-});
+const MoviesRoutes = require("./routes/movies");
+const CategoriesRoutes = require("./routes/categories");
+const GenresRoutes = require("./routes/genres");
+const CustomersRoutes = require("./routes/customers");
+const LoginRoutes = require("./routes/login");
+const RegisterRoutes = require("./routes/register");
+const StaffRoutes = require("./routes/staffs");
+const MovieStaffRoutes = require("./routes/movieStaff");
 
 // body parser
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
-app.use(limiter);
-app.use(cors(corsOptions));
 app.use(fileUpload());
 app.use(logger);
 app.use(cookieParser());
-app.use(helmet());
-app.use(xss());
-app.use(hpp());
-app.use(injectDb(db));
+app.use(injectDb(db.sequelize.models));
 app.use(morgan("combined", { stream: accessLogStream }));
+
+app.use("/api/v1/categories", CategoriesRoutes);
+app.use("/api/v1/movies", MoviesRoutes);
+app.use("/api/v1/genres", GenresRoutes);
+app.use("/api/v1/customers", CustomersRoutes);
+app.use("/api/v1/login", LoginRoutes);
+app.use("/api/v1/register", RegisterRoutes);
+app.use("/api/v1/staffs", StaffRoutes);
+app.use("/api/v1/movieStaffs", MovieStaffRoutes);
 
 var accessLogStream = rfs.createStream("access.log", {
   interval: "1d", // rotate daily
   path: path.join(__dirname, "log"),
 });
 
-app.use("/api/v1/categories", categoriesRoutes);
-app.use("/api/v1/books", booksRoutes);
-app.use("/api/v1/users", usersRoutes);
-app.use("/api/v1/comments", commentsRoutes);
-
 app.use(errorHandler);
+console.log(db.sequelize.models.category);
 
-db.user.belongsToMany(db.book, {
-  through: db.comment,
+db.sequelize.models.category.hasMany(db.sequelize.models.genre, {
+  foreignKey: {
+    type: DataTypes.UUID,
+    allowNull: false,
+  },
 });
-db.book.belongsToMany(db.user, {
-  through: db.comment,
+db.sequelize.models.genre.belongsTo(db.sequelize.models.category);
+
+db.sequelize.models.genre.hasMany(db.sequelize.models.movie, {
+  foreignKey: {
+    type: DataTypes.UUID,
+    allowNull: false,
+  },
 });
+db.sequelize.models.movie.belongsTo(db.sequelize.models.genre);
 
-db.user.hasMany(db.comment);
-db.comment.belongsTo(db.user);
+db.sequelize.models.movie.hasMany(db.sequelize.models.movieDirector);
+db.sequelize.models.movieDirector.belongsTo(db.sequelize.models.movie);
 
-db.book.hasMany(db.comment);
-db.comment.belongsTo(db.book);
-// db.category.belongsToMany(db.book);
-// db.book.belongsTo(db.category);
+db.sequelize.models.staff.hasMany(db.sequelize.models.movieDirector);
+db.sequelize.models.movieDirector.belongsTo(db.sequelize.models.staff);
+
+db.sequelize.models.movie.hasMany(db.sequelize.models.movieActor);
+db.sequelize.models.movieActor.belongsTo(db.sequelize.models.movie);
+
+db.sequelize.models.staff.hasMany(db.sequelize.models.movieActor);
+db.sequelize.models.movieActor.belongsTo(db.sequelize.models.staff);
+
+db.sequelize.models.movie.hasMany(db.sequelize.models.movieAuthor);
+db.sequelize.models.movieAuthor.belongsTo(db.sequelize.models.movie);
+
+db.sequelize.models.staff.hasMany(db.sequelize.models.movieAuthor);
+db.sequelize.models.movieAuthor.belongsTo(db.sequelize.models.staff);
 
 db.sequelize
-  .sync({ force: true })
+  .sync({})
   .then((result) => {
     console.log("fuck");
   })
@@ -100,10 +96,7 @@ db.sequelize
     console.log(err);
   });
 
-const server = app.listen(
-  process.env.PORT,
-  console.log("Hellooo " + process.env.PORT)
-);
+const server = app.listen(process.env.PORT);
 
 process.on("unhandledRejection", (err, promise) => {
   console.log("error " + err.message);

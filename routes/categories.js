@@ -3,25 +3,19 @@ const router = express.Router();
 const { protect, authorize } = require("../middleware/protect");
 
 const {
-  getCategories,
-  getCategory,
   createCategory,
   updateCategory,
   deleteCategory,
+  getCategories,
+  getCategory,
 } = require("../controller/categories");
 
-const { getCategoryBooks } = require("../controller/books");
-router.route("/:categoryId/books").get(getCategoryBooks);
-
-router
-  .route("/")
-  .get(getCategories)
-  .post(protect, authorize("admin"), createCategory);
+router.route("/").post(createCategory).get(getCategories);
 
 router
   .route("/:id")
-  .get(getCategory)
-  .put(protect, authorize("admin", "operator"), updateCategory)
-  .delete(protect, authorize("admin"), deleteCategory);
+  .put(updateCategory)
+  .delete(deleteCategory)
+  .get(getCategory);
 
 module.exports = router;
